@@ -24,11 +24,17 @@ Configuration and options can be found at [draculatheme.com/tmux](https://dracul
 - CPU usage (percentage or load average)
 - RAM usage
 - GPU usage
+- Custom status texts from external scripts
+- GPU VRAM usage
+- GPU power draw
 - Color code based on if prefix is active or not
 - List of windows with current window highlighted
 - When prefix is enabled smiley face turns from green to yellow
 - When charging, 'AC' is displayed
 - If forecast information is available, a ☀, ☁, ☂, or ❄ unicode character corresponding with the forecast is displayed alongside the temperature
+- Spotify playback (needs the tool spotify-tui installed)
+- Current kubernetes context
+- Current working directory of tmux pane
 
 ## Compatibility
 
