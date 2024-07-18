@@ -8,6 +8,10 @@ source $current_dir/utils.sh
 main()
 {
   # set configuration option variables
+  show_kubernetes_context_label=$(get_tmux_option "@dracula-kubernetes-context-label" "")
+  eks_hide_arn=$(get_tmux_option "@dracula-kubernetes-eks-hide-arn" false)
+  eks_extract_account=$(get_tmux_option "@dracula-kubernetes-eks-extract-account" false)
+  hide_kubernetes_user=$(get_tmux_option "@dracula-kubernetes-hide-user" false)
   terraform_label=$(get_tmux_option "@dracula-terraform-label" "")
   show_fahrenheit=$(get_tmux_option "@dracula-show-fahrenheit" true)
   show_location=$(get_tmux_option "@dracula-show-location" true)
@@ -17,14 +21,16 @@ main()
   show_left_icon=$(get_tmux_option "@dracula-show-left-icon" smiley)
   show_left_icon_padding=$(get_tmux_option "@dracula-left-icon-padding" 1)
   show_military=$(get_tmux_option "@dracula-military-time" false)
+  timezone=$(get_tmux_option "@dracula-set-timezone" "")
   show_timezone=$(get_tmux_option "@dracula-show-timezone" true)
   show_left_sep=$(get_tmux_option "@dracula-show-left-sep" )
   show_right_sep=$(get_tmux_option "@dracula-show-right-sep" )
   show_border_contrast=$(get_tmux_option "@dracula-border-contrast" false)
   show_day_month=$(get_tmux_option "@dracula-day-month" false)
   show_refresh=$(get_tmux_option "@dracula-refresh-rate" 5)
+  show_synchronize_panes_label=$(get_tmux_option "@dracula-synchronize-panes-label" "Sync")
   time_format=$(get_tmux_option "@dracula-time-format" "")
-  show_kubernetes_context_label=$(get_tmux_option "@dracula-kubernetes-context-label" "")
+  show_ssh_session_port=$(get_tmux_option "@dracula-show-ssh-session-port" false)
   IFS=' ' read -r -a plugins <<< $(get_tmux_option "@dracula-plugins" "battery network weather")
   show_empty_plugins=$(get_tmux_option "@dracula-show-empty-plugins" true)
 
@@ -49,6 +55,10 @@ main()
       left_icon="#S";;
     window)
       left_icon="#W";;
+    hostname)
+      left_icon="#H";;
+    shortname)
+      left_icon="#h";;
     *)
       left_icon=$show_left_icon;;
   esac
@@ -67,12 +77,14 @@ main()
   fi
 
   # Set timezone unless hidden by configuration
-  case $show_timezone in
-    false)
-      timezone="";;
-    true)
-      timezone="#(date +%Z)";;
-  esac
+  if [[ -z "$timezone" ]]; then
+    case $show_timezone in
+      false)
+        timezone="";;
+      true)
+        timezone="#(date +%Z)";;
+    esac
+  fi
 
   case $show_flags in
     false)
@@ -140,10 +152,20 @@ main()
       tmux set-option -g status-right-length 250
       script="#($current_dir/cwd.sh)"
 
+    elif [ $plugin = "fossil" ]; then
+      IFS=' ' read -r -a colors  <<< $(get_tmux_option "@dracula-fossil-colors" "green dark_gray")
+      tmux set-option -g status-right-length 250
+      script="#($current_dir/fossil.sh)"
+
     elif [ $plugin = "git" ]; then
       IFS=' ' read -r -a colors  <<< $(get_tmux_option "@dracula-git-colors" "green dark_gray")
       tmux set-option -g status-right-length 250
       script="#($current_dir/git.sh)"
+
+    elif [ $plugin = "hg" ]; then
+      IFS=' ' read -r -a colors  <<< $(get_tmux_option "@dracula-hg-colors" "green dark_gray")
+      tmux set-option -g status-right-length 250
+      script="#($current_dir/hg.sh)"
 
     elif [ $plugin = "battery" ]; then
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-battery-colors" "pink dark_gray")
@@ -169,6 +191,10 @@ main()
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-ram-usage-colors" "cyan dark_gray")
       script="#($current_dir/ram_info.sh)"
 
+    elif [ $plugin = "tmux-ram-usage" ]; then
+      IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-tmux-ram-usage-colors" "cyan dark_gray")
+      script="#($current_dir/tmux_ram_info.sh)"
+
     elif [ $plugin = "network" ]; then
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-network-colors" "cyan dark_gray")
       script="#($current_dir/network.sh)"
@@ -190,21 +216,33 @@ main()
       IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-attached-clients-colors" "cyan dark_gray")
       script="#($current_dir/attached_clients.sh)"
 
+    elif [ $plugin = "mpc" ]; then
+      IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-mpc-colors" "green dark_gray")
+      script="#($current_dir/mpc.sh)"
+
     elif [ $plugin = "spotify-tui" ]; then
       IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-spotify-tui-colors" "green dark_gray")
       script="#($current_dir/spotify-tui.sh)"
 
+    elif [ $plugin = "playerctl" ]; then
+      IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-playerctl-colors" "green dark_gray")
+      script="#($current_dir/playerctl.sh)"
+
     elif [ $plugin = "kubernetes-context" ]; then
       IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-kubernetes-context-colors" "cyan dark_gray")
-      script="#($current_dir/kubernetes_context.sh $show_kubernetes_context_label)"
+      script="#($current_dir/kubernetes_context.sh $eks_hide_arn $eks_extract_account $hide_kubernetes_user $show_kubernetes_context_label)"
 
     elif [ $plugin = "terraform" ]; then
       IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-terraform-colors" "light_purple dark_gray")
       script="#($current_dir/terraform.sh $terraform_label)"
 
+    elif [ $plugin = "continuum" ]; then
+      IFS=' ' read -r -a colors <<<$(get_tmux_option "@dracula-continuum-colors" "cyan dark_gray")
+      script="#($current_dir/continuum.sh)"
+
     elif [ $plugin = "weather" ]; then
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-weather-colors" "orange dark_gray")
-      script="#($current_dir/weather_wrapper.sh $show_fahrenheit $show_location $fixed_location)"
+      script="#($current_dir/weather_wrapper.sh $show_fahrenheit $show_location '$fixed_location')"
 
     elif [ $plugin = "time" ]; then
       IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-time-colors" "dark_purple white")
@@ -221,6 +259,13 @@ main()
           script="%a %m/%d %I:%M %p ${timezone} "
         fi
       fi
+    elif [ $plugin = "synchronize-panes" ]; then
+      IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-synchronize-panes-colors" "cyan dark_gray")
+      script="#($current_dir/synchronize_panes.sh $show_synchronize_panes_label)"
+
+    elif [ $plugin = "ssh-session" ]; then
+      IFS=' ' read -r -a colors <<< $(get_tmux_option "@dracula-ssh-session-colors" "green dark_gray")
+      script="#($current_dir/ssh_session.sh $show_ssh_session_port)"
 
     else
       continue
